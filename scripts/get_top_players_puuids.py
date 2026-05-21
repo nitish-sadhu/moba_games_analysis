@@ -32,9 +32,9 @@ def get_db_conn():
 
 
 #---------------------------------------------#
-def list_top_players_puuids(league: str, region: str) -> list:
+def get_top_players_puuids(league: str, region: str) -> list:
 
-	puuids_list = []
+	list_puuids = []
 
 	if league not in {"challengerleagues", "grandmasterleagues", "masterleagues"}:
 		raise 
@@ -52,14 +52,33 @@ def list_top_players_puuids(league: str, region: str) -> list:
 			response_json_entries = response_json["entries"]
 			
 			for each_dict in response_json_entries:
-				puuids_list.append((each_dict["puuid"], str(league)))
+				list_puuids.append((each_dict["puuid"], str(league), get_top_players_match_details(each_dict["puuid"])))
 
 	except Exception as e:
-		logger.error(f"Exception: {e}")
+		logger.error(f"___EXCEPTION___: {e}")
 		raise
 
 
-	return puuids_list
+	return list_puuids
+
+
+
+#---------------------------------------------#
+def get_top_players_match_details(puuid: str) -> list:
+
+	URL = f"https://asia.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=20"
+
+	try:
+		with requests.get(URL, headers=HEADERS) as response:
+			response.raise_for_status()
+
+			list_match_ids = response.json()
+
+	except Exception as e:
+		logger.error(f"___EXCEPTION___: {e}")
+
+
+	return list_match_ids
 
 
 
@@ -69,18 +88,21 @@ def insert_top_players_puuids(league: str, region: str) -> None:
 	conn = get_db_conn()
 	curr = conn.cursor()
 
-	puuids_list = list_top_players_puuids(league, region)
 
 	query = """
 		INSERT INTO top_players (
 				puuid,
-				league
+				league,
+				match_ids
 			)
 		VALUES %s
 	"""
+
+	list_puuids = get_top_players_puuids(league, region)
+
 	try:
 		curr.execute("TRUNCATE TABLE top_players;")
-		execute_values(curr, query, puuids_list)
+		execute_values(curr, query, list_puuids)
 
 	except Exception as e:
 		logger.error(f"Exception: {e}")

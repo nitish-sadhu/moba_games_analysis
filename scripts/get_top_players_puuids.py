@@ -1,12 +1,14 @@
-import pandas as pd 
-import psycopg2
 from psycopg2.extras import execute_values
+import psycopg2
+from tqdm import tqdm
+import pandas as pd 
 import requests
 import argparse
+import time
 
 from headers import HEADERS
 
-import logging 
+import logging
 
 
 
@@ -27,13 +29,13 @@ def get_db_conn():
 			password="admin_password"
 		)
 
-	return conn 
+	return conn
 
 
 
 #---------------------------------------------#
 def get_top_players_puuids(league: str, region: str) -> list:
-
+	
 	list_puuids = []
 
 	if league not in {"challengerleagues", "grandmasterleagues", "masterleagues"}:
@@ -51,8 +53,10 @@ def get_top_players_puuids(league: str, region: str) -> list:
 
 			response_json_entries = response_json["entries"]
 			
-			for each_dict in response_json_entries:
-				list_puuids.append((each_dict["puuid"], str(league), get_top_players_match_details(each_dict["puuid"])))
+			for each_dict in tqdm(response_json_entries):
+				list_puuids.append(each_dict["puuid"])
+
+			#print(list_puuids[:3])
 
 	except Exception as e:
 		logger.error(f"___EXCEPTION___: {e}")
@@ -64,7 +68,9 @@ def get_top_players_puuids(league: str, region: str) -> list:
 
 
 #---------------------------------------------#
-def get_top_players_match_details(puuid: str) -> list:
+def get_top_players_match_ids(puuid: list) -> list:
+
+	list_match_ids = []
 
 	URL = f"https://asia.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=20"
 
@@ -72,13 +78,32 @@ def get_top_players_match_details(puuid: str) -> list:
 		with requests.get(URL, headers=HEADERS) as response:
 			response.raise_for_status()
 
-			list_match_ids = response.json()
+			list_match_ids = list(response.json())
 
 	except Exception as e:
 		logger.error(f"___EXCEPTION___: {e}")
 
 
 	return list_match_ids
+
+
+
+#---------------------------------------------#
+def assemble_details(league: str, region: str) -> list:
+
+	list_details = []
+	list_match_ids = []
+
+	list_puuids = get_top_players_puuids(league)
+
+	for puuid in list_puuids:
+		list_match_ids.append(get_top_players_match_ids(puuid))
+		time.sleep(1.5)
+
+	for i in range(len(list_puuids)):
+		list_details.append((list_puuids[i], league, list_match_ids[i]))
+
+	return list_details
 
 
 
@@ -98,11 +123,11 @@ def insert_top_players_puuids(league: str, region: str) -> None:
 		VALUES %s
 	"""
 
-	list_puuids = get_top_players_puuids(league, region)
+	list_details = assemble_details(league, region)
 
 	try:
 		curr.execute("TRUNCATE TABLE top_players;")
-		execute_values(curr, query, list_puuids)
+		execute_values(curr, query, list_details)
 
 	except Exception as e:
 		logger.error(f"Exception: {e}")
@@ -141,8 +166,6 @@ def main() -> None:
 if __name__ == "__main__":
 
 	main()
-
-
 
 
 

@@ -75,6 +75,8 @@ def get_top_players_match_ids(puuid: list) -> list:
 	URL = f"https://asia.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=20"
 
 	try:
+		print("_______getting match_ids_______")
+
 		with requests.get(URL, headers=HEADERS) as response:
 			response.raise_for_status()
 
@@ -82,7 +84,9 @@ def get_top_players_match_ids(puuid: list) -> list:
 
 	except Exception as e:
 		logger.error(f"___EXCEPTION___: {e}")
+		raise
 
+	print(list_match_ids)
 
 	return list_match_ids
 
@@ -94,9 +98,12 @@ def assemble_details(league: str, region: str) -> list:
 	list_details = []
 	list_match_ids = []
 
-	list_puuids = get_top_players_puuids(league)
+	list_puuids = get_top_players_puuids(league, region)
 
-	for puuid in list_puuids:
+	print(f"_______total puuids_______: {len(list_puuids)}")
+
+	for puuid in tqdm(list_puuids):
+		print(f"_________PUUID_________: {puuid}")
 		list_match_ids.append(get_top_players_match_ids(puuid))
 		time.sleep(1.5)
 

@@ -7,6 +7,7 @@ import argparse
 import time
 
 from headers import HEADERS
+from utilities import get_db_conn
 
 import logging
 
@@ -16,20 +17,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-
-
-#---------------------------------------------#
-def get_db_conn():
-
-	conn = psycopg2.connect(
-			host="localhost",
-			port=5432,
-			database="postgres_db",
-			user="admin",
-			password="admin_password"
-		)
-
-	return conn
 
 
 
@@ -105,7 +92,7 @@ def assemble_details(league: str, region: str) -> list:
 	for puuid in tqdm(list_puuids):
 		print(f"_________PUUID_________: {puuid}")
 		list_match_ids.append(get_top_players_match_ids(puuid))
-		time.sleep(1.5)
+		time.sleep(0.5)
 
 	for i in range(len(list_puuids)):
 		list_details.append((list_puuids[i], league, list_match_ids[i]))
@@ -133,7 +120,6 @@ def insert_top_players_puuids(league: str, region: str) -> None:
 	list_details = assemble_details(league, region)
 
 	try:
-		curr.execute("TRUNCATE TABLE top_players;")
 		execute_values(curr, query, list_details)
 
 	except Exception as e:

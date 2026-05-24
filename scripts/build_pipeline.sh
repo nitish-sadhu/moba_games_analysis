@@ -15,6 +15,11 @@ CREATE TABLE IF NOT EXISTS top_players (
 	league VARCHAR(25),
 	match_ids TEXT[]
 );
+
+CREATE TABLE IF NOT EXISTS raw_match_details (
+	match_id VARCHAR(13) PRIMARY KEY,
+	match_details JSONB
+);
 EOF
 
 cd -
